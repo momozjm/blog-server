@@ -53,21 +53,99 @@ http.createServer(function (req, res) {
     // 数据接收完成
     req.addListener("end", function () {
 
-      var result = JSON.stringify(qs.parse(tempResult));
+      var result = JSON.parse(tempResult)
+      const { username, password } = result
+      const time = getNowFormatDate(); // 时间
       console.log("\n参数为：");
-      console.log(result);
+      console.log(tempResult, JSON.parse(tempResult));
 
-      if (pathName == "/sendMessage") { // 提交留言信息
+      if (pathName == "/login") { // 提交留言信息
+        // 查询 user 表
+        // 使用 Promise 的原因是因为中间调用了两次数据库，而数据库查询是异步的，所以需要用 Promise。
+        new Promise((resolve, reject) => {
 
-        console.log("\n【API - 提交留言信息】");
+          // 新增的 SQL 语句及新增的字段信息
+          let readSql = "SELECT * FROM user";
 
-      } else if (pathName == "/login") { // 登录
+          // 连接 SQL 并实施语句
+          connection.query(readSql, function (error1, response1) {
 
-        console.log("\n【API - 登录】");
+            if (error1) { // 如果 SQL 语句错误
+              throw error1;
+            } else {
 
-      } else if (pathName == "/register") { // 注册
+              console.log("\nSQL 查询结果：");
 
-        console.log("\n【API - 注册】");
+              // 将结果先去掉 RowDataPacket，再转换为 json 对象
+              let newRes = JSON.parse(JSON.stringify(response1));
+              console.log(newRes);
+
+              // 判断姓名重复与否
+              let userNameRepeat = false;
+              for (let item in newRes) {
+                if (newRes[item].user_name == username) {
+                  userNameRepeat = true;
+                }
+              }
+
+              // 如果姓名重复
+              if (userNameRepeat) {
+                // 返回数据
+                res.write(JSON.stringify({
+                  code: 0,
+                  message: "注册失败，用户名已存在！"
+                }));
+                // 结束响应
+                res.end();
+                return;
+              } else if (newRes.length > 300) { // 如果注册名额已满
+                // 返回数据
+                res.write(JSON.stringify({
+                  code: 0,
+                  message: "注册失败，名额已满！"
+                }));
+
+                // 结束响应
+                res.end();
+                return;
+              } else { // 可以注册
+                resolve();
+              }
+
+            }
+          });
+
+        }).then(() => {
+
+          console.log("\n第二步：");
+
+          // 新增的 SQL 语句及新增的字段信息
+          let addSql = "INSERT INTO user(user_name,user_password, time) VALUES(?,?,?)";
+          let addSqlParams = [username, password, time];
+
+          // 连接 SQL 并实施语句
+          connection.query(addSql, addSqlParams, function (error2, response2) {
+            if (error2) { // 如果 SQL 语句错误
+              res.write(JSON.stringify({
+                code: 0,
+                message: "未知错误"
+              }));
+              // 结束响应
+              res.end();
+            } else {
+              // 返回数据
+              res.write(JSON.stringify({
+                code: 200,
+                message: "注册成功！"
+              }));
+
+              // 结束响应
+              res.end();
+            }
+          });
+
+        })
+
 
       }
       // 接口信息处理完毕
@@ -83,7 +161,7 @@ http.createServer(function (req, res) {
 
     console.log("\n接口为：" + pathName);
 
-    if (pathName == "/getMessage") {
+    if (pathName == "/login") {
 
       var result = url.parse(req.url, true);
       // res.writeHead(200, {
