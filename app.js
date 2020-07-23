@@ -2,9 +2,9 @@
 var mysql = require('mysql');
 // MySQL 的连接信息
 var connection = mysql.createConnection({
-  host: 'localhost',
+  host: '47.114.140.199',
   user: 'root',
-  password: 'wazjm1994@',
+  password: '',
   database: 'data'
 });
 // 开始连接
